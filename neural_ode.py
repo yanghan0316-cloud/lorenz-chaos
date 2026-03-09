@@ -7,7 +7,7 @@ Neural ODE 模型
 
 import torch
 import torch.nn as nn
-from torchdiffeq import odeint_adjoint as odeint  # 使用伴随方法，内存O(1)
+from torchdiffeq import odeint
 
 
 # ======================== 动力学网络 ========================

@@ -14,19 +14,21 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib
+import matplotlib.font_manager as fm
 
+# 1. 必须先加载样式，防止它覆盖我们后续的底层设置
 plt.style.use("seaborn-v0_8-whitegrid")
 
-# 全局设置：支持中文 + 美观样式
-# Windows优先使用微软雅黑
-matplotlib.rcParams["font.sans-serif"] = [
-    "Microsoft YaHei",  # Windows 微软雅黑
-    "SimHei",           # Windows 黑体
-]
-matplotlib.rcParams["axes.unicode_minus"] = False
-# 清除字体缓存，确保新设置生效
-matplotlib.font_manager._load_fontmanager(try_read_cache=False)
-plt.style.use("seaborn-v0_8-whitegrid")
+# 2. 回归底层逻辑：直接指定黑体（TTF格式的兼容性最好，能避开 TTC 格式微软雅黑在某些后端的解析 Bug）
+font_path = r"C:\Windows\Fonts\simhei.ttf"
+
+# 3. 显式实例化字体属性对象
+font_prop = fm.FontProperties(fname=font_path)
+
+# 4. 最关键的一步：直接接管 font.family，而不是去修改 font.sans-serif 列表
+# 这会强制全局画图时直接使用该字体的内部注册名称，跳过所有的 fallback 轮询机制
+plt.rcParams['font.family'] = font_prop.get_name() 
+plt.rcParams['axes.unicode_minus'] = False
 
 
 # ======================== 1. 3D 吸引子 ========================

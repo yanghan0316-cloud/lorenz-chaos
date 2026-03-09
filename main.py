@@ -152,6 +152,7 @@ def main():
         node_model = NeuralODE(
             hidden_dim=CONFIG["node_hidden_dim"],
             n_layers=CONFIG["node_n_layers"],
+            solver="rk4"
         ).to(device)
         node_model.load_state_dict(torch.load(node_model_path, map_location=device))
         node_model.eval()

@@ -60,7 +60,7 @@ def train_neural_ode(
     print("=" * 50)
 
     # 初始化模型
-    model = NeuralODE(hidden_dim=hidden_dim, n_layers=n_layers).to(device)
+    model = NeuralODE(hidden_dim=hidden_dim, n_layers=n_layers, solver="rk4").to(device)
     n_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
     print(f"模型参数量: {n_params:,}")
 
@@ -79,45 +79,41 @@ def train_neural_ode(
 
     # 计算可用的片段数量
     n_segments = len(train_data) // segment_len
-    print(f"数据点数: {len(train_data)}, 片段长度: {segment_len}, 片段数: {n_segments}")
+    print(f"数据点数: {len(train_data)}, 片段长度: {segment_len}, 批次大小(Batch Size): {n_segments}")
     print(f"开始训练 ({n_epochs} epochs)...\n")
 
     start_time = time.time()
 
+    # 1. 预先将数据切分为 Batch 并行格式，形状变为: (n_segments, segment_len, 3)
+    truncated_data = data_tensor[:n_segments * segment_len]
+    batched_data = truncated_data.view(n_segments, segment_len, 3)
+    segment_t = torch.linspace(0, (segment_len - 1) * dt, segment_len).to(device)
+
     for epoch in range(1, n_epochs + 1):
         model.train()
-        epoch_loss = 0.0
+        
+        # 2. 取出所有片段的起点作为输入，形状: (n_segments, 3)
+        x0_batch = batched_data[:, 0, :]
+        
+        # 3. 一次性并行求解所有片段！
+        # 此时 ODE solver 内部是对一个矩阵进行乘法，而非单个向量
+        # 输出形状为: (segment_len, n_segments, 3)
+        pred_traj = model(x0_batch, segment_t)
+        
+        # 4. 将预测结果维度转置为 (n_segments, segment_len, 3) 以匹配 batched_data
+        pred_traj = pred_traj.transpose(0, 1)
 
-        # 随机打乱片段顺序
-        indices = np.random.permutation(n_segments)
+        # 5. 计算整个 Batch 的 Loss
+        loss = criterion(pred_traj, batched_data)
 
-        for idx in indices:
-            # 取出一个片段
-            start = idx * segment_len
-            end = start + segment_len
-            segment_data = data_tensor[start:end]         # (segment_len, 3)
-            segment_t = torch.linspace(0, (segment_len - 1) * dt, segment_len).to(device)
-
-            # 前向传播：从片段起点积分
-            x0 = segment_data[0]                           # (3,)
-            pred_traj = model(x0, segment_t)               # (segment_len, 3)
-
-            # 计算损失
-            loss = criterion(pred_traj, segment_data)
-
-            # 反向传播
-            optimizer.zero_grad()
-            loss.backward()
-
-            # 梯度裁剪（防止混沌系统导致梯度爆炸）
-            torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
-
-            optimizer.step()
-            epoch_loss += loss.item()
-
+        # 反向传播
+        optimizer.zero_grad()
+        loss.backward()
+        torch.nn.utils.clip_grad_norm_(model.parameters(), grad_clip)
+        optimizer.step()
         scheduler.step()
 
-        avg_loss = epoch_loss / n_segments
+        avg_loss = loss.item()
         losses.append(avg_loss)
 
         # 保存最佳模型
