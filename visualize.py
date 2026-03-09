@@ -15,12 +15,13 @@ from matplotlib import cm
 from mpl_toolkits.mplot3d import Axes3D
 import matplotlib
 
+plt.style.use("seaborn-v0_8-whitegrid")
+
 # 全局设置：支持中文 + 美观样式
-# Windows优先使用微软雅黑，Mac用PingFang，Linux用文泉驿
+# Windows优先使用微软雅黑
 matplotlib.rcParams["font.sans-serif"] = [
     "Microsoft YaHei",  # Windows 微软雅黑
     "SimHei",           # Windows 黑体
-    "DejaVu Sans",      # 兜底
 ]
 matplotlib.rcParams["axes.unicode_minus"] = False
 # 清除字体缓存，确保新设置生效
