@@ -41,11 +41,11 @@ CONFIG = {
     "train_ratio": 0.8,                   # 训练集比例
 
     # --- Neural ODE ---
-    "node_hidden_dim": 64,                # 隐藏层维度
+    "node_hidden_dim": 128,               # 隐藏层维度（加宽以增强表达能力）
     "node_n_layers": 3,                   # 隐藏层数
-    "node_epochs": 300,                   # 训练轮数
-    "node_segment_len": 50,               # 分段训练片段长度
-    "node_lr": 1e-3,                      # 学习率
+    "node_epochs": 300,                   # 训练轮数（按课程学习分配到各阶段）
+    "node_segment_len": 50,               # 最终目标片段长度
+    "node_lr": 1e-3,                      # 基础学习率
 
     # --- LSTM ---
     "lstm_hidden_dim": 64,                # LSTM隐藏维度
@@ -152,7 +152,7 @@ def main():
         node_model = NeuralODE(
             hidden_dim=CONFIG["node_hidden_dim"],
             n_layers=CONFIG["node_n_layers"],
-            solver="rk4"
+            solver="rk4",
         ).to(device)
         node_model.load_state_dict(torch.load(node_model_path, map_location=device))
         node_model.eval()
